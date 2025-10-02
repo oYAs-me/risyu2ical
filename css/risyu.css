@@ -1,0 +1,71 @@
+h1 {
+  margin: 10px 4px 15px 2px;
+}
+
+p {
+  margin: 1px 0px 1px 8px;
+}
+
+#risyu_img {
+  width: 50%;
+  height: auto;
+  border-style: double;
+  border-color: black;
+  border-width: 3px;
+  margin: auto;
+  display: block;
+}
+
+.info {
+  font-size: large;
+  margin-top: 8px;
+  margin-left: 4px;
+  margin-bottom: 2px;
+}
+
+.input, #name {
+  width: 150px;
+  padding: 3px 7px;
+  margin: 1px 3px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+  font-size: 100%;
+}
+.input:focus, #name:focus {
+  outline: 0;
+  border: 2px solid #2196f3;
+}
+
+input[type=checkbox] {
+  margin: 2px 1px 2px 4px;
+}
+
+input[type=button] {
+  width: 100px;
+  height: 25px;
+  margin: 4px;
+}
+
+#output {
+  height: 150px;
+  border: solid;
+  border-color: black;
+  border-width: 1px;
+  margin: 4px;
+}
+
+/* .ps {
+  font-size: small;
+} */
+
+
+
+
+
+
+
+
+.google {
+  margin-bottom: 15px;
+  font-size: large;
+}
