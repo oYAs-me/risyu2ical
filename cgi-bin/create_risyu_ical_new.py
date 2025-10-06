@@ -27,15 +27,19 @@ def ical_init(cal_name):
 def make_rrule(rrule_info, test=True, nx75=False):
   rrule = {'FREQ': term_data.FREQ} # 繰り返しの頻度
   rrule['BYDAY'] = rrule_info['BYDAY'] # 曜日
-  rrule['exdate'] = rrule_info['exdate'] # 繰り返しから除外する日
+  rrule['exdate'] = [str(dd.astimezone(tz.gettz("Asia/Tokyo"))) for dd in rrule_info['exdate']] # 繰り返しから除外する日
   count = term_data.COUNT
   if nx75: # スポーツ実技のときは，初回の講義が行われない
     rrule['COUNT'] = str(count-1)
-    rrule['exdate'].append(rrule_info['start']) # 初回の講義を繰り返しから除外する
+    rrule['exdate'].append(str(rrule_info['start'].astimezone(tz.gettz("Asia/Tokyo")))) # 初回の講義を繰り返しから除外する
   elif test: # 期末テストがあるときは，16回目の講義が期末テストになる
     rrule['COUNT'] = str(count)
   else: # 期末テストがないときは，16回目の講義がなくなる
     rrule['COUNT'] = str(count-1)
+  if rrule['exdate'] == []: # exdateが空なら削除
+    del rrule['exdate']
+  else:
+    rrule['exdate'] = ','.join(rrule['exdate'])
   return rrule
 
 def create_event(subject, classroom, dtstart, cls_delta, rrule):
