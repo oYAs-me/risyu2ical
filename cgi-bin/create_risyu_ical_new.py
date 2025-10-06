@@ -8,20 +8,47 @@ from icalendar import Calendar, Event, vText
 from dateutil import tz
 import random
 import os
-from library import term_data_25_1 as term_data
+from library import term_data_25_2 as term_data
 
 # 前後期か判別するための定数
 SEMESTER = [[1,2], [3,4]]
-use_semester = SEMESTER[0] # この数字を変えれば学期を変えられる
+use_semester = SEMESTER[1] # この数字を変えれば学期を変えられる
 
-
+# iCalの初期化とメタデータ設定
 def ical_init(cal_name):
   cal = Calendar()
   cal.add('prodid', f"-//yHOP//Python//{cal_name}//ja")
-  cal.add('version', '2.0')
+  cal.add('version', '3.0')
   cal.add('calscale', 'GREGORIAN')
   cal.add('method', 'REQUEST')
   return cal
+
+# RRULEを作成
+def make_rrule(rrule_info, test=True, nx75=False):
+  rrule = {'FREQ': term_data.FREQ} # 繰り返しの頻度
+  rrule['BYDAY'] = rrule_info['BYDAY'] # 曜日
+  rrule['exdate'] = rrule_info['exdate'] # 繰り返しから除外する日
+  count = term_data.COUNT
+  if nx75: # スポーツ実技のときは，初回の講義が行われない
+    rrule['COUNT'] = str(count-1)
+    rrule['exdate'].append(rrule_info['start']) # 初回の講義を繰り返しから除外する
+  elif test: # 期末テストがあるときは，16回目の講義が期末テストになる
+    rrule['COUNT'] = str(count)
+  else: # 期末テストがないときは，16回目の講義がなくなる
+    rrule['COUNT'] = str(count-1)
+  return rrule
+
+def create_event(subject, classroom, dtstart, cls_delta, rrule):
+  event = Event()
+  event.add('summary', subject)
+  description = f"{subject} ({teacher})"
+  event.add('description', description)
+  event.add('location', classroom)
+  event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
+  dtend = dtstart + cls_delta
+  event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
+  event.add('rrule', rrule)
+  return event
 
 # ↓は情報をreturnするやつ
 cgitb.enable()
@@ -33,9 +60,9 @@ cal_name = storage.getvalue("name")
 cal = ical_init(cal_name)
 
 # detaの受信
-data = storage.getvalue("sent") # sent: json形式
+data = storage.getvalue("sent") # sent: json形式の講義idリスト
 data = json.loads(data)
-test_data = storage.getvalue("test")
+test_data = storage.getvalue("test") # test: json形式の期末テスト有無リスト
 test_json = json.loads(test_data)
 
 with open('../files/cls_info.json') as f:
@@ -82,72 +109,44 @@ for id, test in zip(data, test_json):
     # 時間割から実際の日時をリストアップする
     if d[0] == '月':
       if term1:
-        da += term_data.MONDAY1
+        event = create_event(subject, classroom, term_data.MONDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.MONDAY1, test, id[:4]=='NX75'))
+        cal.add_component(event)
       if term2:
-        da += term_data.MONDAY2
-      delta = term_data.TIMETABLE[int(d[1])-1]
-      date += [cls + delta for cls in da]
+        event = create_event(subject, classroom, term_data.MONDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.MONDAY2, test, id[:4]=='NX75'))
+        cal.add_component(event)
       continue
     if d[0] == '火':
       if term1:
-        da += term_data.TUESDAY1
+        event = create_event(subject, classroom, term_data.TUESDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.TUESDAY1, test, id[:4]=='NX75'))
+        cal.add_component(event)
       if term2:
-        da += term_data.TUESDAY2
-      delta = term_data.TIMETABLE[int(d[1])-1]
-      date += [cls + delta for cls in da]
+        event = create_event(subject, classroom, term_data.TUESDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.TUESDAY2, test, id[:4]=='NX75'))
+        cal.add_component(event)
       continue
     if d[0] == '水':
       if term1:
-        da += term_data.WEDNESDAY1
+        event = create_event(subject, classroom, term_data.WEDNESDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.WEDNESDAY1, test, id[:4]=='NX75'))
+        cal.add_component(event)
       if term2:
-        da += term_data.WEDNESDAY2
-      delta = term_data.TIMETABLE[int(d[1])-1]
-      date += [cls + delta for cls in da]
+        event = create_event(subject, classroom, term_data.WEDNESDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.WEDNESDAY2, test, id[:4]=='NX75'))
+        cal.add_component(event)
       continue
     if d[0] == '木':
       if term1:
-        da += term_data.THURSDAY1
+        event = create_event(subject, classroom, term_data.THURSDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.THURSDAY1, test, id[:4]=='NX75'))
+        cal.add_component(event)
       if term2:
-        da += term_data.THURSDAY2
-      delta = term_data.TIMETABLE[int(d[1])-1]
-      date += [cls + delta for cls in da]
+        event = create_event(subject, classroom, term_data.THURSDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.THURSDAY2, test, id[:4]=='NX75'))
+        cal.add_component(event)
       continue
     if d[0] == '金':
       if term1:
-        da += term_data.FRIDAY1
+        event = create_event(subject, classroom, term_data.FRIDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.FRIDAY1, test, id[:4]=='NX75'))
+        cal.add_component(event)
       if term2:
-        da += term_data.FRIDAY2
-      delta = term_data.TIMETABLE[int(d[1])-1]
-      date += [cls + delta for cls in da]
+        event = create_event(subject, classroom, term_data.FRIDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.FRIDAY2, test, id[:4]=='NX75'))
+        cal.add_component(event)
       continue
-
-  # dateを時間順に整列
-  date = sorted(date)
-  # print(date)
-
-  # idによる調整
-  if id[:4] == 'NX75': # スポーツ実技の最初の講義を削除
-    del date[0]
-  if not(test) and (len(date) == 16): # 16回講義で期末テストがない講義の最終講義を削除
-    del date[-1]
-
-  # icalデータの作成
-  summary = subject
-  description = f"{subject} ({teacher})"
-  location = classroom
-  while date: # イベント作成
-    dtstart = date.pop(0)
-    event = Event()
-    if (test and not(date)): # 期末テストの書き換え
-      summary += ' 期末テスト'
-      description += ' の期末テスト日'
-    event.add('summary', summary)
-    event.add('description', description)
-    event.add('location', location)
-    event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
-    dtend = dtstart + cls_delta
-    event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
-    cal.add_component(event)
 
 # ファイルに書き出してURLをajaxで返す
 rand = random.randbytes(16).hex()
