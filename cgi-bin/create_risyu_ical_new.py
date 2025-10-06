@@ -155,7 +155,6 @@ try:
   f = open(f"../files/{rand}/{cal_name}.ics", 'wb')
   f.write(cal.to_ical())
   f.close()
-  url = 'https://yhop.net'
-  print(f'<a href="{url}/files/{rand}/{cal_name}.ics">{url}/files/{rand}/{cal_name}.ics</a>')
+  print(f'<a href="./files/{rand}/{cal_name}.ics">{rand}/{cal_name}.ics</a>')
 except FileExistsError:
   print("Error: 別のファイル名を指定してください")
