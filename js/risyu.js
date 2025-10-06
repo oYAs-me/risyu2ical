@@ -113,7 +113,7 @@ function createIcal() {
     var nameElement = document.getElementById('name');
     var fileName = nameElement.value;
     $.ajax({
-      url:'./cgi-bin/create_risyu_ical.py',
+      url:'/cgi-bin/create_risyu_ical.py',
       type:'POST',
       data:{sent:contentsJson, name:fileName}
     })
@@ -147,7 +147,7 @@ function newCreateIcal() {
   // console.log(lectureNumbers)
   var lectureNumbersJson = JSON.stringify(lectureNumbers)
   $.ajax({
-    url:'./cgi-bin/create_risyu_ical_new.py',
+    url:'/cgi-bin/create_risyu_ical_new.py',
     type:'POST',
     data:{sent:lectureNumbersJson, name:fileName, test:testJson}
   })
