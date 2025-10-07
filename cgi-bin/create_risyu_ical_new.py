@@ -40,7 +40,7 @@ def convert_day2byday(cls_info):
 # term_data_listを受け取って，start, exdate, COUNTをまとめる関数
 def summarize_term_data(term_data_list, cls_info):
   dtstart = min([td['start'] for td in term_data_list]) # startの最小値
-  byday = ','.join([td['BYDAY'] for td in term_data_list]) # BYDAYをまとめる
+  byday = ','.join(set([td['BYDAY'] for td in term_data_list])) # BYDAYをまとめる
   exdate = []
   for td in term_data_list:
     exdate += td['exdate'] # td['exdate']はリストなのでそのまま足し合わせる
