@@ -37,10 +37,13 @@ def convert_day2byday(cls_info):
         term_data_list.append(term_data_dict[d][1])
   return term_data_list
 
+BYDAY_ORDER = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] # 曜日の順番を定義
+
 # term_data_listを受け取って，start, exdate, COUNTをまとめる関数
 def summarize_term_data(term_data_list, cls_info):
   dtstart = min([td['start'] for td in term_data_list]) # startの最小値
   byday = ','.join(set([td['BYDAY'] for td in term_data_list])) # BYDAYをまとめる
+  byday = sorted(byday, key=BYDAY_ORDER.index) # 曜日の順番を整える
   exdate = []
   for td in term_data_list:
     exdate += td['exdate'] # td['exdate']はリストなのでそのまま足し合わせる
