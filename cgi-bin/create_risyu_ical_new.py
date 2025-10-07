@@ -73,8 +73,9 @@ def create_event(cls_info, rrule):
   description = f"{cls_info['subject']} ({cls_info['teacher']})"
   event.add('description', description)
   event.add('location', cls_info['classroom'])
-  event.add('dtstart', cls_info['dtstart'].astimezone(tz.gettz("Asia/Tokyo")))
-  dtend = cls_info['dtstart'] + cls_info['cls_delta']
+  dtstart = rrule['dtstart'] + cls_info['dtstart'] # cls_infoの時刻とterm_dataの開始日を合わせる
+  event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
+  dtend = dtstart + cls_info['cls_delta']
   event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
   event.add('rrule', rrule)
   return event
