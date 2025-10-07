@@ -23,33 +23,58 @@ def ical_init(cal_name):
   cal.add('method', 'REQUEST')
   return cal
 
+# 曜日とタームから適切なterm_dataの辞書を返す関数
+def convert_day2byday(cls_info):
+  day_list = cls_info['day']
+  [term1, term2] = cls_info['term']
+  term_data_dict = {'月': [term_data.MONDAY1, term_data.MONDAY2], '火': [term_data.TUESDAY1, term_data.TUESDAY2], '水': [term_data.WEDNESDAY1, term_data.WEDNESDAY2], '木': [term_data.THURSDAY1, term_data.THURSDAY2], '金': [term_data.FRIDAY1, term_data.FRIDAY2]} # 曜日とタームの対応辞書
+  term_data_list = []
+  for d in day_list: # 曜日ごとにterm_dataをリストに追加
+    if d in term_data_dict.keys():
+      if term1:
+        term_data_list.append(term_data_dict[d][0])
+      if term2:
+        term_data_list.append(term_data_dict[d][1])
+  return term_data_list
+
+# term_data_listを受け取って，start, exdate, COUNTをまとめる関数
+def summarize_term_data(term_data_list, cls_info):
+  dtstart = min([td['start'] for td in term_data_list]) # startの最小値
+  byday = ','.join([td['BYDAY'] for td in term_data_list]) # BYDAYをまとめる
+  exdate = []
+  for td in term_data_list:
+    exdate += td['exdate'] # td['exdate']はリストなのでそのまま足し合わせる
+  exdate_str = ','.join([str(dd.astimezone(tz.gettz("Asia/Tokyo"))) for dd in exdate]) # exdateをstrに変換してまとめる
+  count = term_data.COUNT * len(term_data_list) # COUNTは曜日とタームの数倍にする
+  # testとnx75の情報をもとにCOUNTを調整
+  if cls_info['id'][:4] == 'NX75': # スポーツ実技のときは，初回の講義が行われない
+    count -= 1
+    exdate_str += ',' + str(cls_info['dtstart'].astimezone(tz.gettz("Asia/Tokyo"))) # 初回の講義を繰り返しから除外する
+  elif not(cls_info['test']): # 期末テストがないときは，16回目の講義がなくなる
+    count -= 1
+  rrule_info = {'dtstart': dtstart, 'byday': byday, 'exdate': exdate_str, 'COUNT': str(count)}
+  return rrule_info
+
+
 # RRULEを作成
-def make_rrule(rrule_info, test=True, nx75=False):
+def make_rrule(cls_info):
+  term_data_list = convert_day2byday(cls_info) # cls_infoからterm_dataのリストを作成
+  rrule_info = summarize_term_data(term_data_list, cls_info) # term_data_listからrruleを作成
   rrule = {'FREQ': term_data.FREQ} # 繰り返しの頻度
-  rrule['BYDAY'] = rrule_info['BYDAY'] # 曜日
-  rrule['exdate'] = [str(dd.astimezone(tz.gettz("Asia/Tokyo"))) for dd in rrule_info['exdate']] # 繰り返しから除外する日
-  count = term_data.COUNT
-  if nx75: # スポーツ実技のときは，初回の講義が行われない
-    rrule['COUNT'] = str(count-1)
-    rrule['exdate'].append(str(rrule_info['start'].astimezone(tz.gettz("Asia/Tokyo")))) # 初回の講義を繰り返しから除外する
-  elif test: # 期末テストがあるときは，16回目の講義が期末テストになる
-    rrule['COUNT'] = str(count)
-  else: # 期末テストがないときは，16回目の講義がなくなる
-    rrule['COUNT'] = str(count-1)
-  if rrule['exdate'] == []: # exdateが空なら削除
-    del rrule['exdate']
-  else:
-    rrule['exdate'] = ','.join(rrule['exdate'])
+  rrule['BYDAY'] = rrule_info['byday']
+  rrule['COUNT'] = rrule_info['COUNT']
+  if rrule_info['exdate'] != '': # exdateが空でなければ追加
+    rrule['EXDATE'] = rrule_info['exdate']
   return rrule
 
-def create_event(subject, classroom, dtstart, cls_delta, rrule):
+def create_event(cls_info, rrule):
   event = Event()
-  event.add('summary', subject)
-  description = f"{subject} ({teacher})"
+  event.add('summary', cls_info['subject'])
+  description = f"{cls_info['subject']} ({cls_info['teacher']})"
   event.add('description', description)
-  event.add('location', classroom)
-  event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
-  dtend = dtstart + cls_delta
+  event.add('location', cls_info['classroom'])
+  event.add('dtstart', cls_info['dtstart'].astimezone(tz.gettz("Asia/Tokyo")))
+  dtend = cls_info['dtstart'] + cls_info['cls_delta']
   event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
   event.add('rrule', rrule)
   return event
@@ -94,63 +119,29 @@ for id, test in zip(data, test_json):
       term2 = False
 
   # 授業の情報を確認
+  cls_info = {'term': [term1, term2], 'subject': '', 'teacher': '', 'classroom': '', 'day': [], 'dtstart': '', 'cls_delta': timedelta(), 'id': id, 'test': test}
   try:
     day = json_dict_id['day']
-    subject = json_dict_id['subject']
-    teacher = json_dict_id['teacher']
-    classroom = json_dict_id['classroom']
+    cls_info['subject'] = json_dict_id['subject']
+    cls_info['teacher'] = json_dict_id['teacher']
+    cls_info['classroom'] = json_dict_id['classroom']
   except IndexError:
     continue
   day = day.split(',')
-  date = []
   for d in day: # 開始時刻を入れたdateリストを作成
-    da = []
     try: # 「火3～5」の講義時間の処理
       cls_delta = (int(d[3]) - int(d[1]) + 1) * timedelta(hours=1, minutes=40) - timedelta(minutes=10)
-    except IndexError:
+    except IndexError: # 4文字未満は1コマ分とみなす
       cls_delta = term_data.PERIOD
+    cls_info['day'].append(d[0]) # 曜日
+    # 以下は強制上書きしているが問題ないとみなす
+    cls_info['dtstart'] = term_data.TIMETABLE[int(d[1])-1] # 始まりのコマの時刻に変更
+    cls_info['cls_delta'] = cls_delta # 授業時間
 
-    # 時間割から実際の日時をリストアップする
-    if d[0] == '月':
-      if term1:
-        event = create_event(subject, classroom, term_data.MONDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.MONDAY1, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      if term2:
-        event = create_event(subject, classroom, term_data.MONDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.MONDAY2, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      continue
-    if d[0] == '火':
-      if term1:
-        event = create_event(subject, classroom, term_data.TUESDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.TUESDAY1, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      if term2:
-        event = create_event(subject, classroom, term_data.TUESDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.TUESDAY2, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      continue
-    if d[0] == '水':
-      if term1:
-        event = create_event(subject, classroom, term_data.WEDNESDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.WEDNESDAY1, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      if term2:
-        event = create_event(subject, classroom, term_data.WEDNESDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.WEDNESDAY2, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      continue
-    if d[0] == '木':
-      if term1:
-        event = create_event(subject, classroom, term_data.THURSDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.THURSDAY1, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      if term2:
-        event = create_event(subject, classroom, term_data.THURSDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.THURSDAY2, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      continue
-    if d[0] == '金':
-      if term1:
-        event = create_event(subject, classroom, term_data.FRIDAY1['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.FRIDAY1, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      if term2:
-        event = create_event(subject, classroom, term_data.FRIDAY2['start'] + term_data.TIMETABLE[int(d[1])-1], cls_delta, make_rrule(term_data.FRIDAY2, test, id[:4]=='NX75'))
-        cal.add_component(event)
-      continue
+  # 1講義ずつeventを作成
+  rrule = make_rrule(cls_info)
+  event = create_event(cls_info, rrule)
+  cal.add_component(event)
 
 # ファイルに書き出してURLをajaxで返す
 rand = random.randbytes(16).hex()

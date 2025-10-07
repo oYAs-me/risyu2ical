@@ -23,4 +23,4 @@ TIMETABLE = [timedelta(hours=9), timedelta(hours=10, minutes=40), timedelta(hour
 PERIOD = timedelta(hours=1, minutes=30)
 
 FREQ = 'WEEKLY' # 繰り返しの頻度
-COUNT = 16 # 繰り返しの回数(0なら無限)
+COUNT = 8 # 一タームあたりの講義数(0なら無限)
