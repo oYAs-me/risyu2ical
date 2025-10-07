@@ -65,6 +65,7 @@ def make_rrule(cls_info):
   rrule['COUNT'] = rrule_info['COUNT']
   if rrule_info['exdate'] != '': # exdateが空でなければ追加
     rrule['EXDATE'] = rrule_info['exdate']
+  rrule['dtstart'] = rrule_info['dtstart']
   return rrule
 
 def create_event(cls_info, rrule):
