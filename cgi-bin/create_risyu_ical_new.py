@@ -42,8 +42,9 @@ BYDAY_ORDER = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] # 曜日の順番を定
 # term_data_listを受け取って，start, exdate, COUNTをまとめる関数
 def summarize_term_data(term_data_list, cls_info):
   dtstart = min([td['start'] for td in term_data_list]) # startの最小値
-  byday = ','.join(set([td['BYDAY'] for td in term_data_list])) # BYDAYをまとめる
-  byday = sorted(byday, key=BYDAY_ORDER.index) # 曜日の順番を整える
+  byday = set([td['BYDAY'] for td in term_data_list]) # BYDAYをまとめる
+  byday = sorted(set(byday), key=BYDAY_ORDER.index) # 曜日の順番を整える
+  byday_set = ','.join(byday) # BYDAYをstrに変換してまとめる
   exdate = []
   for td in term_data_list:
     exdate += td['exdate'] # td['exdate']はリストなのでそのまま足し合わせる
@@ -55,7 +56,7 @@ def summarize_term_data(term_data_list, cls_info):
     exdate_str += ',' + str(cls_info['dtstart'].astimezone(tz.gettz("Asia/Tokyo"))) # 初回の講義を繰り返しから除外する
   elif not(cls_info['test']): # 期末テストがないときは，16回目の講義がなくなる
     count -= 1
-  rrule_info = {'dtstart': dtstart, 'byday': byday, 'exdate': exdate_str, 'COUNT': str(count)}
+  rrule_info = {'dtstart': dtstart, 'byday': byday_set, 'exdate': exdate_str, 'COUNT': str(count)}
   return rrule_info
 
 
@@ -64,8 +65,9 @@ def make_rrule(cls_info):
   term_data_list = convert_day2byday(cls_info) # cls_infoからterm_dataのリストを作成
   rrule_info = summarize_term_data(term_data_list, cls_info) # term_data_listからrruleを作成
   rrule = {'FREQ': term_data.FREQ} # 繰り返しの頻度
-  rrule['BYDAY'] = rrule_info['byday']
   rrule['COUNT'] = rrule_info['COUNT']
+  if rrule_info['byday'] != '': # bydayが空でなければ追加
+    rrule['BYDAY'] = rrule_info['byday']
   if rrule_info['exdate'] != '': # exdateが空でなければ追加
     rrule['EXDATE'] = rrule_info['exdate']
   rrule['dtstart'] = rrule_info['dtstart']
