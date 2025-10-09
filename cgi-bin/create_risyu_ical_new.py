@@ -79,7 +79,8 @@ def create_event(cls_info, rrule):
   description = f"{cls_info['subject']} ({cls_info['teacher']})"
   event.add('description', description)
   event.add('location', cls_info['classroom'])
-  dtstart = rrule['dtstart'] + cls_info['dtstart'] # cls_infoの時刻とterm_dataの開始日を合わせる
+  rrule['dtstart'] = rrule['dtstart'] + cls_info['dtstart'] # cls_infoの時刻とterm_dataの開始日を合わせる
+  dtstart = rrule['dtstart']
   event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
   dtend = dtstart + cls_info['cls_delta']
   event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
@@ -153,6 +154,8 @@ for id, test in zip(data, test_json):
 # ファイルに書き出してURLをajaxで返す
 rand = random.randbytes(16).hex()
 try:
+  # デバッグ用にcalをprint
+  print(cal)
   os.makedirs(f"../files/{rand}")
   f = open(f"../files/{rand}/{cal_name}.ics", 'wb')
   f.write(cal.to_ical())
