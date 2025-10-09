@@ -4,7 +4,7 @@
 import cgi, cgitb
 import json
 from datetime import datetime, timedelta
-from icalendar import Calendar, Event, vText
+from icalendar import Calendar, Event, vRecur
 from dateutil import tz
 import random
 import os
@@ -79,12 +79,11 @@ def create_event(cls_info, rrule):
   description = f"{cls_info['subject']} ({cls_info['teacher']})"
   event.add('description', description)
   event.add('location', cls_info['classroom'])
-  rrule['dtstart'] = rrule['dtstart'] + cls_info['dtstart'] # cls_infoの時刻とterm_dataの開始日を合わせる
-  dtstart = rrule['dtstart']
+  dtstart = rrule['dtstart'] + cls_info['dtstart'] # cls_infoの時刻とterm_dataの開始日を合わせる
   event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
   dtend = dtstart + cls_info['cls_delta']
   event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
-  event.add('rrule', rrule)
+  event.add('rrule', vRecur(rrule))
   return event
 
 # ↓は情報をreturnするやつ
