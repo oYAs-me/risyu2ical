@@ -3,8 +3,8 @@
 
 import cgi, cgitb
 import json
-from datetime import datetime, timedelta
-from icalendar import Calendar, Event, vRecur
+from datetime import datetime, timedelta, 
+from icalendar import Calendar, Event
 from dateutil import tz
 import random
 import os
@@ -73,6 +73,21 @@ def make_rrule(cls_info):
   rrule['dtstart'] = rrule_info['dtstart']
   return rrule
 
+# rruleをstringに変換する関数
+def rrule_to_string(rrule):
+  rrule_str = ''
+  # rruleに入っているFreq, Count, Byday, Exdateを文字列に成形
+  rrule_str += f"FREQ={rrule['FREQ']};"
+  rrule_str += f"BYDAY={rrule['BYDAY']};"
+  rrule_str += f"COUNT={rrule['COUNT']};"
+  if 'EXDATE' in rrule.keys():
+    rrule_str += f"EXDATE={
+      datetime.strftime(rrule['EXDATE'], '%Y%m%dT%H%M%SZ')
+      },"
+  rrule_str = rrule_str[:-1] # 最後のカンマを削除
+  return rrule_str
+
+# iCalendarに登録できるEventを作成
 def create_event(cls_info, rrule):
   event = Event()
   event.add('summary', cls_info['subject'])
@@ -83,7 +98,7 @@ def create_event(cls_info, rrule):
   event.add('dtstart', dtstart.astimezone(tz.gettz("Asia/Tokyo")))
   dtend = dtstart + cls_info['cls_delta']
   event.add('dtend', dtend.astimezone(tz.gettz("Asia/Tokyo")))
-  event.add('rrule', vRecur(rrule))
+  event.add('rrule', rrule)
   return event
 
 # ↓は情報をreturnするやつ
